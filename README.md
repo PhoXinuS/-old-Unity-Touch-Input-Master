@@ -7,4 +7,5 @@ Feel free to use this and please report if you will find any issues ;)
 To Use:
 1. Put the folder with scripts in your project
 2. Add TouchInputMaster.cs to GameObject in the scene and set the values
-3. Well done and good luck with your project :>
+3. Any touch input will be detected in the TouchEvents.cs class, subscribe your voids to the Actions you want to use
+4. Well done and good luck with your project :>
