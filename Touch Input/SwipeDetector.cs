@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 [System.Serializable]
 public class SwipeDetector
@@ -7,13 +8,19 @@ public class SwipeDetector
     public bool detectSwipeOnlyAfterRelease = false;
     public float minDistanceForSwipe = 100f;
 
-    [HideInInspector] public bool swipeDistanceAchieved = false;
-    [HideInInspector] public bool swiped = false;
+    public Dictionary<int, bool> swipeDistanceAchieved = new Dictionary<int, bool>();
+    public Dictionary<int, bool> swiped = new Dictionary<int, bool>();
 
     private Vector2 fingerDownPosition;
     private Vector2 fingerUpPosition;
 
-    public void DetectSwipe(Vector2 fingerUpPosition, Vector2 fingerDownPosition, TouchPhase touchPhase)
+    public void RegisterPotentialSwipe(int touchID)
+    {
+        swipeDistanceAchieved.Add(touchID, false);
+        swiped.Add(touchID, false);
+    }
+
+    public void DetectSwipe(int touchID, Vector2 fingerUpPosition, Vector2 fingerDownPosition, TouchPhase touchPhase)
     {
         this.fingerDownPosition = fingerUpPosition;
         this.fingerUpPosition = fingerDownPosition;
@@ -35,11 +42,17 @@ public class SwipeDetector
                     SendSwipe(direction);
                 }
 
-                swiped = true;
+                swiped[touchID] = true;
             }
 
-            swipeDistanceAchieved = true;
+            swipeDistanceAchieved[touchID] = true;
         }
+    }
+
+    public void UnRegisterPotentialSwipe(int touchID)
+    {
+        swipeDistanceAchieved.Remove(touchID);
+        swiped.Remove(touchID);
     }
 
     private bool IsVerticalSwipe()

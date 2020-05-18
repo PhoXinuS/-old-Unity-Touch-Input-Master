@@ -11,64 +11,92 @@ public class TouchInputMaster : MonoBehaviour
     private Dictionary<int, Vector2> touchesDownPosition = new Dictionary<int, Vector2>();
     private Dictionary<int, float> touchesTime = new Dictionary<int, float>();
 
-
     private void Update()
     {
         foreach (Touch touch in Input.touches)
         {
             var touchID = touch.fingerId;
+            var touchPosition = touch.position;
 
             if (touch.phase == TouchPhase.Began)
             {
-                touchesDownPosition.Add(touchID, touch.position);
-                touchesUpPosition.Add(touchID, touch.position);
-                touchesTime.Add(touchID, 0f);
+                OnTouchBegan(touchID, touchPosition);
             }
             touchesTime[touchID] += Time.deltaTime;
 
-
             if (touch.phase == TouchPhase.Moved)
             {
-                touchesUpPosition[touchID] = touch.position;
-
-                swipeDetector.DetectSwipe(touchesUpPosition[touchID], touchesDownPosition[touchID], TouchPhase.Moved);
-                if (swipeDetector.swiped)
-                {
-                    touchesDownPosition[touchID] = touchesUpPosition[touchID];
-                }
+                OnTouchMoved(touchID, touchPosition);
             }
             else if (touch.phase == TouchPhase.Stationary)
             {
-                touchesUpPosition[touchID] = touch.position;
-
-                if (!swipeDetector.swipeDistanceAchieved)
-                {
-                    holdDetector.DetectHold(touchesTime[touchID], touchesUpPosition[touchID]);
-                }
+                OnTouchStationary(touchID, touchPosition);
             }
             else if (touch.phase == TouchPhase.Ended)
             {
-                touchesUpPosition[touchID] = touch.position;
-
-                swipeDetector.DetectSwipe(touchesUpPosition[touchID], touchesDownPosition[touchID], TouchPhase.Ended);
-                if (!swipeDetector.swipeDistanceAchieved && !swipeDetector.swiped)
-                {
-                    tapDetector.DetectTap(touchesTime[touchID], touchesUpPosition[touchID]);
-                }
-
-                if (holdDetector.holded)
-                {
-                    TouchEvents.EndHold?.Invoke(touchesUpPosition[touchID]);
-                }
-
-                touchesDownPosition.Remove(touchID);
-                touchesUpPosition.Remove(touchID);
-                touchesTime.Remove(touchID);
-
-                swipeDetector.swiped = false;
-                swipeDetector.swipeDistanceAchieved = false;
+                OnTouchEnded(touchID, touchPosition);
             }
         }
+    }
+
+
+    private void OnTouchBegan(int touchID, Vector2 touchPosition)
+    {
+        touchesDownPosition.Add(touchID, touchPosition);
+        touchesUpPosition.Add(touchID, touchPosition);
+        touchesTime.Add(touchID, 0f);
+
+        holdDetector.RegisterPotentialHold(touchID);
+        swipeDetector.RegisterPotentialSwipe(touchID);
+    }
+
+    private void OnTouchMoved(int touchID, Vector2 touchPosition)
+    {
+        touchesUpPosition[touchID] = touchPosition;
+
+        swipeDetector.DetectSwipe(touchID, touchesUpPosition[touchID], touchesDownPosition[touchID], TouchPhase.Moved);
+        if (swipeDetector.swiped[touchID])
+        {
+            touchesDownPosition[touchID] = touchesUpPosition[touchID];
+        }
+    }
+
+    private void OnTouchStationary(int touchID, Vector2 touchPosition)
+    {
+        touchesUpPosition[touchID] = touchPosition;
+
+        if (!swipeDetector.swipeDistanceAchieved[touchID])
+        {
+            holdDetector.DetectHold(touchID, touchesTime[touchID], touchesUpPosition[touchID]);
+        }
+    }
+
+    private void OnTouchEnded(int touchID, Vector2 touchPosition)
+    {
+        touchesUpPosition[touchID] = touchPosition;
+
+        swipeDetector.DetectSwipe(touchID, touchesUpPosition[touchID], touchesDownPosition[touchID], TouchPhase.Ended);
+        if (!swipeDetector.swipeDistanceAchieved[touchID] && !swipeDetector.swiped[touchID])
+        {
+            tapDetector.DetectTap(touchesTime[touchID], touchesUpPosition[touchID]);
+        }
+
+        if (holdDetector.holded[touchID])
+        {
+            holdDetector.EndHold(touchID, touchesUpPosition[touchID]);
+        }
+
+        ResetVariables(touchID);
+    }
+
+    private void ResetVariables(int touchID)
+    {
+        touchesDownPosition.Remove(touchID);
+        touchesUpPosition.Remove(touchID);
+        touchesTime.Remove(touchID);
+
+        holdDetector.UnRegisterPotentialHold(touchID);
+        swipeDetector.UnRegisterPotentialSwipe(touchID);
     }
 }
 
